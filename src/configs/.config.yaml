@@ -1,0 +1,75 @@
+---
+details:
+  username: # String
+  device_name: # String
+  operating_sys_distro: # String
+  machine_architecture: # String
+  machine_shell: # String
+  machine_shell_version: # String
+  cpu_status: # String
+  ram_status: # String
+  system_uptime: # String
+  current_date_time: # String
+  welcome_message: "Sample message, there once 5 was a man who sailed to northern egypt only to find that there weren't any exploitable treasures" # String
+
+formats:
+  date_format:  "%b %d, %Y" # "%m/%d/%y" # using format specifiers
+  uptime_format: None # days, hours, colon
+  cpu_memory_format: [Values, MiB] # [percent/values/both, GB/MiB]
+  ram_memory_format: [Values, MiB] # [percent/values/both, GB/MiB]
+
+# Display options
+displays:
+  should_display_image: true # boolean
+  should_display_blocks: true # boolean
+  should_display_text: true # boolean
+  should_display_keys: false # boolean
+
+# Spatial alignment
+alignments:
+  space_before: 8 # int
+  space_after: 6 # int
+  lines_before: 2 # int
+  lines_after: 2 # int
+  hr_node_repeat: 26 # int
+  word_wrap: 30 # int
+  color_block_padding: 4 # int
+
+# Bullet characters
+chars:
+  hr_divider_node: '\u2219' # String
+  default_bullet: '' # String
+  interface_bullet: '\ufb32' # String
+  machine_bullet: '\uf109' # String
+  shell_bullet: '\uf489' # String
+  cpu_bullet: '\ue266' # String
+  ram_bullet: '\ue266' # String
+  uptime_bullet: '\uf017' # String
+  date_bullet: '\uf073' # String
+
+# Text colors
+colors:
+  user_string_color: LightYellow # color
+  machine_string_color: LightGreen # color
+  hr_color: LightBlue # color
+  detail_key_color: Yellow # color
+  detail_value_color: LightWhite # color
+  text_description_color: LightGreen # color
+  default_bullet_color: Red # color
+  interface_bullet_color: Blue # color
+  machine_bullet_color: LightRed # color
+  shell_bullet_color: LightMagenta # color
+  cpu_bullet_color: Yellow # color
+  ram_bullet_color: LightGreen # color
+  uptime_bullet_color: LightMagenta # color
+  date_bullet_color: LightBlue # color
+
+# Override options
+overrides:
+  interface_override: # String
+  machine_override: # String
+  shell_override: # String
+  cpu_override: true # boolean
+  ram_override: true # boolean
+  uptime_override: true # boolean
+  date_override: true # boolean
