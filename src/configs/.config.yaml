@@ -34,4 +34,4 @@ overrides:
   sys_distro_override: null
   sys_shell_override: null
 details:
-  welcome_message: null
+  welcome_message: Hello, this is a sample message. Have a good day!
