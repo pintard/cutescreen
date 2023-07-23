@@ -1,3 +1,5 @@
+use chrono::Local;
+use regex::Regex;
 use std::{
     cmp,
     collections::HashMap,
@@ -5,10 +7,6 @@ use std::{
     fs::{read_to_string, File},
     path::PathBuf,
 };
-
-use chrono::Local;
-
-use regex::Regex;
 use whoami;
 
 use crate::{
