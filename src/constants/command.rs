@@ -4,9 +4,8 @@ use strum_macros::EnumString;
 #[derive(Display, EnumString)]
 #[strum(ascii_case_insensitive)]
 pub enum Command {
-    Init,
-    Reset,
     Config,
+    Reset,
     Help,
     Create,
 }

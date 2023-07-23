@@ -1,85 +1,72 @@
 use std::{
     cmp,
-    env::{consts, current_dir, var},
+    collections::HashMap,
+    env::{current_dir, var},
     fs::{read_to_string, File},
     path::PathBuf,
-    process::id,
-    str::SplitWhitespace,
 };
 
-use chrono::{DateTime, Local};
-use psutil::memory::{self, VirtualMemory};
+use chrono::Local;
+
+use regex::Regex;
 use whoami;
 
 use crate::{
     constants::{
-        config::{Alignment, Config, Details, Display, Formats, TextColor},
-        esc_seq::EscSeq::{self, End},
-        general::BlockType,
+        config::{Alignment, BulletChar, Config, Details, Display, Formats, Override, TextColor},
+        esc_seq::EscSeq::End,
+        general::{
+            BaseDetails, BlockType,
+            DetailKey::{self, CurrentDateTime, DeviceName, SysDistro, SysShellVersion, Username},
+        },
     },
-    utils::get_shell_version::get_shell_version,
+    extensions::{integer_traits::IntegerHandling, string_traits::TextHandling},
+    utils::general::get_shell_version,
 };
 
 pub fn base_command() {
-    assemble_base();
-}
-
-fn assemble_base() -> Vec<String> {
-    let mut base_details: Vec<String> = Vec::new();
-
-    /* Load yaml config */
     let config_path: PathBuf = current_dir().unwrap().join("src/configs/.config.yaml");
     let config_file: File = File::open(config_path).expect("Unable to open file");
-    let config: Config = serde_yaml::from_reader(config_file).expect("Unable to read values");
+    let config: Config = serde_yaml::from_reader(config_file).expect("Unable to read yaml");
 
-    /* Deconstruct Config preferences */
-    let Display {
-        should_display_text,
-        should_display_blocks,
-        should_display_image,
-        should_display_keys,
-    } = config.displays;
+    let cute_path: PathBuf = current_dir().unwrap().join("src/configs/.cute");
+    let cute_img: String = read_to_string(cute_path).expect("Unable to read text");
 
+    let base_details: BaseDetails = generate_base_details(config.clone());
+    print_base_details(config, base_details, cute_img);
+}
+
+fn generate_base_details(config: Config) -> BaseDetails {
     let Alignment {
-        space_before,
-        space_after,
-        hr_node_repeat,
-        lines_before,
-        lines_after,
         word_wrap,
         color_block_padding,
+        ..
     } = config.alignments;
 
     let TextColor {
-        user_string_color,
-        machine_string_color,
-        hr_color,
-        detail_key_color,
-        detail_value_color,
-        text_description_color,
-        default_bullet_color,
-        interface_bullet_color,
-        machine_bullet_color,
-        shell_bullet_color,
-        cpu_bullet_color,
-        ram_bullet_color,
-        uptime_bullet_color,
-        date_bullet_color,
+        username_color,
+        device_name_color,
+        default_text_color,
+        ..
     } = config.colors;
 
-    let Formats { date_format, .. } = config.formats;
+    let Formats {
+        current_date_time_format,
+        ..
+    } = config.formats;
 
     let Details {
         welcome_message, ..
     } = config.details;
 
-    /* Output assembly functions */
+    let Override {
+        username_override,
+        device_name_override,
+        sys_distro_override,
+        sys_shell_override,
+    } = config.overrides;
 
-    /**
-     * Takes a color block type and stringifies the ASCII color background grid
-     * @return String the color blocks
-     */
-    let assemble_blocks = |block_type: BlockType| -> String {
+    let generate_blocks = |block_type: BlockType| -> String {
         let mut blocks = String::new();
         let x: u8 = if block_type == BlockType::Light {
             10
@@ -95,130 +82,221 @@ fn assemble_base() -> Vec<String> {
             blocks.push_str(&block);
         }
 
-        println!("{}", blocks);
         blocks
     };
 
-    /**
-     * Takes welcome message from supplied configuration object and wrap the lines
-     * at a word_wrap rate also found in the config object
-     * @return Vec<String> the welcome message split into multiple strings in a vector
-     */
-    let assemble_message = || -> Vec<String> {
-        trait TextHandling {
-            fn split_at_closest(&self, idx: u8) -> (String, String);
-        }
-
-        impl TextHandling for String {
-            /**
-             * Splits a string at the closest space given a target index
-             */
-            fn split_at_closest(&self, idx: u8) -> (String, String) {
-                let mut str: String = String::from(&self.clone());
-                let mut aggr: String = String::new();
-                if str.len() as u8 > idx {
-                    while (aggr.len() as u8) < idx {
-                        let mut iter: SplitWhitespace = str.split_whitespace();
-                        let word: &str = iter.next().unwrap();
-                        let chunk: &str = &(word.to_owned() + " ");
-                        aggr.push_str(chunk);
-                        str = iter.map(|x| x.to_owned() + " ").collect::<String>();
-                    }
-                } else {
-                    aggr = str;
-                    str = String::from("");
-                }
-                (aggr, str)
-            }
-        }
-
+    let generate_message = || -> Vec<String> {
         let mut wrapped_text: Vec<String> = vec![];
-        let mut text: String = String::from(welcome_message);
-        let word_wrap: usize = config.alignments.word_wrap.into();
+        let word_wrap: usize = word_wrap.into();
 
-        if text.len() > word_wrap {
-            while !text.is_empty() {
-                let (chunk, rest) = text.split_at_closest(cmp::min(word_wrap, text.len()) as u8);
-                wrapped_text.push(chunk.to_string());
-                text = rest.to_string();
+        if let Some(mut text) = welcome_message {
+            if text.len() > word_wrap {
+                while !text.is_empty() {
+                    let (chunk, rest) =
+                        text.split_at_closest(cmp::min(word_wrap, text.len()) as u8);
+                    wrapped_text.push(chunk.to_string());
+                    text = rest.to_string();
+                }
+            } else {
+                wrapped_text = Vec::from([text]);
             }
-        } else {
-            wrapped_text = Vec::from([text]);
         }
 
-        println!("{:?}", wrapped_text);
         wrapped_text
     };
 
-    let assemble_details = || -> Vec<String> {
-        let mut details: Vec<String> = Vec::new();
-
-        // OS User and machine name
-        let username: String = whoami::username();
-        let device_name: String = whoami::devicename();
-        println!("{} {}", username, device_name);
-
-        // Operating system and version
-        let operating_sys_distro: String = whoami::distro();
-        println!("{}", operating_sys_distro);
-
-        // Machine type / architecture
-        let machine_architecture: String = consts::ARCH.to_string();
-        println!("{}", machine_architecture);
-
-        // Shell emulator name and version
-        let machine_shell: String = var("SHELL")
-            .unwrap()
-            .split("/")
-            .last()
-            .unwrap_or_else(|| "BASH")
-            .to_uppercase();
-        let machine_shell_version =
-            get_shell_version(machine_shell).unwrap_or_else(|| "unknown".to_string());
-
-        println!("{}", machine_shell_version);
-
-        // Ram usage in percent or value
-        // let virtual_memory: VirtualMemory = memory::virtual_memory().ok().unwrap();
-        // let memory_used = virtual_memory.used();
-        // let memory_total = virtual_memory.available();
-        // let memory_percentage = virtual_memory.percent();
-
-        // let memory_percent_test = (memory_used as f64 / memory_total as f64) * 100 as f64;
-
-        // let memory_values: String = format!(
-        //     "used:{}\ntotal:{}\npercent:{}\npercent_test:{}",
-        //     memory_used, memory_total, memory_percentage, memory_percent_test
-        // );
-
-        // println!("{}", memory_values,);
-
-        // CPU usage in percent or value
-
-        // System uptime
-        // let system_uptime =
-
-        // let boot_time = boot_time().unwrap();
-        // let uptime = time::now().duration_since(boot_time).unwrap();
-        // println!("System uptime: {}", uptime);
-
-        // Calendar day
-        let curr_time: DateTime<Local> = Local::now();
-        let formatted_curr_time: String = curr_time.format(&date_format).to_string();
-        println!("{}", formatted_curr_time);
-
-        details
+    let generate_details = || -> HashMap<DetailKey, String> {
+        HashMap::from([
+            (
+                Username,
+                username_override
+                    .unwrap_or(whoami::username())
+                    .colorize(username_color),
+            ),
+            (
+                DeviceName,
+                device_name_override
+                    .unwrap_or(whoami::devicename())
+                    .colorize(device_name_color),
+            ),
+            (
+                SysDistro,
+                sys_distro_override
+                    .unwrap_or(whoami::distro())
+                    .colorize(default_text_color.clone()),
+            ),
+            (
+                SysShellVersion,
+                sys_shell_override
+                    .unwrap_or(
+                        get_shell_version(
+                            var("SHELL")
+                                .unwrap()
+                                .split("/")
+                                .last()
+                                .unwrap_or_else(|| "bash")
+                                .to_uppercase(),
+                        )
+                        .unwrap_or_else(|| "unknown".to_string()),
+                    )
+                    .colorize(default_text_color.clone()),
+            ),
+            (
+                CurrentDateTime,
+                Local::now()
+                    .format(&current_date_time_format)
+                    .to_string()
+                    .colorize(default_text_color),
+            ),
+        ])
     };
 
-    let color_string = |color: EscSeq, str: &str| -> String { format!("{}{}{}", color, str, End) };
+    BaseDetails {
+        normal_blocks: generate_blocks(BlockType::Normal),
+        light_blocks: generate_blocks(BlockType::Light),
+        message: generate_message(),
+        details: generate_details(),
+    }
+}
 
-    /* Match details to see if should be pushed to details list, from yaml map using config struct */
-    assemble_blocks(BlockType::Normal);
-    assemble_blocks(BlockType::Light);
-    assemble_details();
-    assemble_message();
+fn print_base_details(config: Config, base_details: BaseDetails, cute_img: String) -> () {
+    let Display {
+        should_display_text,
+        should_display_blocks,
+        should_display_image,
+    } = config.displays;
 
-    println!("{}", color_string(user_string_color, "Hello"));
+    let Alignment {
+        hr_node_repeat,
+        space_before,
+        space_after,
+        lines_before,
+        lines_after,
+        ..
+    } = config.alignments;
 
-    base_details
+    let BulletChar {
+        hr_divider_node,
+        default_bullet,
+        sys_distro_bullet,
+        sys_shell_bullet,
+        current_date_time_bullet,
+        ..
+    } = config.chars;
+
+    let TextColor {
+        sys_distro_bullet_color,
+        sys_shell_bullet_color,
+        current_date_time_bullet_color,
+        hr_color,
+        ..
+    } = config.colors;
+
+    let BaseDetails {
+        normal_blocks,
+        light_blocks,
+        details,
+        message,
+    } = base_details;
+
+    let empty_line: String = String::from(" ");
+    let mut detail_list: Vec<String> = Vec::new();
+
+    if should_display_blocks {
+        detail_list.extend(vec![normal_blocks, light_blocks, empty_line.clone()]);
+    }
+
+    if should_display_text {
+        let username: String = details.get(&Username).unwrap().into();
+        let device_name: String = details.get(&DeviceName).unwrap().into();
+
+        let mut hr_line: String = String::from("");
+
+        if let Some(_) = hr_divider_node {
+            hr_line = hr_divider_node
+                .unwrap()
+                .to_char()
+                .to_string()
+                .repeat(hr_node_repeat.into())
+                .colorize(hr_color);
+        }
+
+        let sys_distro: String = details.get(&SysDistro).unwrap().into();
+        let sys_shell_version: String = details.get(&SysShellVersion).unwrap().into();
+        let current_date_time: String = details.get(&CurrentDateTime).unwrap().into();
+
+        detail_list.extend(vec![
+            format!("{} / {}", username, device_name),
+            hr_line,
+            format!(
+                "{}  {}",
+                sys_distro_bullet
+                    .unwrap_or(default_bullet)
+                    .to_char()
+                    .to_string()
+                    .colorize(sys_distro_bullet_color),
+                sys_distro
+            ),
+            format!(
+                "{}  {}",
+                sys_shell_bullet
+                    .unwrap_or(default_bullet)
+                    .to_char()
+                    .to_string()
+                    .colorize(sys_shell_bullet_color),
+                sys_shell_version
+            ),
+            format!(
+                "{}  {}",
+                current_date_time_bullet
+                    .unwrap_or(default_bullet)
+                    .to_char()
+                    .to_string()
+                    .colorize(current_date_time_bullet_color),
+                current_date_time
+            ),
+            empty_line,
+        ]);
+
+        detail_list = detail_list.into_iter().filter(|s| !s.is_empty()).collect();
+
+        detail_list.extend(message);
+    }
+
+    let regex: Regex = Regex::new(r"\x1b\[.*?\x1b\[0m").unwrap();
+
+    let cute_img_height: usize = cute_img.lines().count();
+    let cute_img_width: usize = regex.find_iter(cute_img.lines().next().unwrap()).count();
+    let detail_list_height: usize = detail_list.len();
+    let max_height: usize = cmp::max(detail_list_height, cute_img_height);
+
+    let img_padding: String = " ".repeat(cute_img_width);
+    let space_before_padding: String = " ".repeat(space_before);
+    let space_after_padding: String = " ".repeat(space_after);
+    let lines_before_padding: String = "\n".repeat(lines_before);
+    let lines_after_padding: String = "\n".repeat(lines_after);
+
+    print!("{}", lines_before_padding);
+
+    if should_display_image {
+        for i in 0..max_height {
+            let img_line: &str = cute_img.lines().nth(i).unwrap_or(img_padding.as_str());
+            let mut detail_line: String = String::from("");
+
+            if let Some(_) = detail_list.get(i) {
+                detail_line = detail_list[i].clone();
+            }
+
+            println!(
+                "{}{}{}{}",
+                space_before_padding, img_line, space_after_padding, detail_line
+            );
+        }
+    } else {
+        for line in detail_list {
+            println!("{}{}", space_before_padding, line);
+        }
+    }
+
+    print!("{}", lines_after_padding);
 }

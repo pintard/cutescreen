@@ -1,16 +1,15 @@
-#![allow(unused)]
-
+// #![allow(unused)]
 mod commands;
 mod constants;
+mod extensions;
 mod utils;
 
-use commands::{config, help, init, reset, base, create};
-use constants::command::Command::{Config, Help, Init, Reset, Create};
-use constants::command::Command;
+use commands::{base, config, create, help, reset};
+use constants::command::Command::{self, Config, Create, Help, Reset};
 
-use strum::ParseError;
 use std::env;
 use std::str::FromStr;
+use strum::ParseError;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -20,11 +19,10 @@ fn main() {
         let command: Result<Command, ParseError> = Command::from_str(command_str);
         match command {
             Ok(Config) => config::config_command(),
-            Ok(Help) => help::help_command(),
-            Ok(Init) => init::init_command(),
             Ok(Reset) => reset::reset_command(),
             Ok(Create) => create::create_command(),
-            Err(err) => println!("{err}: '{command_str}'"),
+            Ok(Help) => help::help_command(),
+            Err(_) => println!("Command not found: '{command_str}'"),
         };
     } else {
         base::base_command();

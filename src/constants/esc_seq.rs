@@ -1,11 +1,7 @@
 use std::fmt;
-
-use derivative::Derivative;
 use serde::{Deserialize, Serialize};
-use serde_yaml;
-use strum_macros::Display;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum EscSeq {
     Black,
     Red,
