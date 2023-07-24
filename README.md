@@ -4,22 +4,24 @@ cutescreen is a terminal welcome screen program written in rust.
 
 ![sample image](cutescreen.png)
 
+---
+
 ## **Table of Contents**
 
-[Usage](#USAGE)
+[Usage](#usage)
 
-1. [Getting Started](#GETTING-STARTED)
-1. [Commands](#COMMANDS)
+1. [Getting Started](#getting-started)
+1. [Commands](#commands)
 
-[Configurations](#CONFIGURATIONS)
+[Configurations](#configurations)
 
-1. [Colors](#COLORS)
+1. [Colors](#colors)
 
 ---
 
-## [Usage](#USAGE)
+## [Usage](#usage)
 
-### [**Getting Started**](#GETTING-STARTED)
+### [**Getting Started**](#getting-started)
 
 To ensure cutescreen loads each time your shell is opened you must export it in your shell configuration file (`.zshrc`, `.bashrc`, `.bash_profile`, typically found in your `$HOME` directory).
 
@@ -28,7 +30,7 @@ export PATH="$PATH:$HOME/cutescreen/bin"
 cutescreen
 ```
 
-### [**Commands**](#COMMANDS)
+### [**Commands**](#commands)
 
 | **Command**           | **Definition**                                                |
 | --------------------- | ------------------------------------------------------------- |
@@ -40,7 +42,7 @@ cutescreen
 
 ---
 
-## [Configurations](#CONFIGURATIONS)
+## [Configurations](#configurations)
 
 This program is configurable to tailor your own welcome screen. See an example of the configuration fields below:
 
@@ -84,19 +86,19 @@ details:
   welcome_message: null
 ```
 
-### [**Colors**](#COLORS)
+### [**Colors**](#colors)
 
 You can customize cutescreen with a preferred color for several components. These colors are the templated 16-choice colors your terminal uses. To modify these specific colors, you will have to change the corresponding ANSI color in your terminal profile (located usually in the settings of your emulator).
 
 The following color values are:
 
-| **Normal** | **Light**     |
-| ---------- | ------------- |
-| black      | light black   |
-| red        | light red     |
-| green      | light green   |
-| yellow     | light yellow  |
-| blue       | light blue    |
-| magenta    | light magenta |
-| cyan       | light cyan    |
-| white      | light white   |
+| **Normal** | **Light**    |
+| ---------- | ------------ |
+| Black      | LightBlack   |
+| Red        | LightRed     |
+| Green      | LightGreen   |
+| Yellow     | LightYellow  |
+| Blue       | LightBlue    |
+| Magenta    | LightMagenta |
+| Cyan       | LightCyan    |
+| White      | LightWhite   |

@@ -133,7 +133,7 @@ fn generate_base_details(config: Config) -> BaseDetails {
                                 .split("/")
                                 .last()
                                 .unwrap_or_else(|| "bash")
-                                .to_uppercase(),
+                                .to_string(),
                         )
                         .unwrap_or_else(|| "unknown".to_string()),
                     )
